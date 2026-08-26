@@ -162,7 +162,7 @@ configs/  assets/  README.md  pyproject.toml  .gitignore
 
 ## Tooling (decision 2)
 
-`uv` + `pyproject.toml` (matching hygroadh). Python ≥ 3.10. Runtime
+`uv` + `pyproject.toml`. Python ≥ 3.10. Runtime
 dependency: numpy only. `pyyaml` as optional extra `fatiguelife[yaml]`
 (JSON configs work without it). pytest as dev dependency. No external APIs,
 no scraping.
