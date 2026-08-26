@@ -42,7 +42,9 @@ mass         = ρ·L·b·h
 
 ## Dashboard
 
-![Dashboard](assets/dashboard-preview.png)
+![FatigueLife dashboard overview](assets/dashboard-preview.png)
+
+![FatigueLife results and charts](assets/dashboard-results.png)
 
 Eleven sections: header with status badge · model inputs with a beam diagram ·
 material assistant (illustrative presets or a strict custom-material form) ·
