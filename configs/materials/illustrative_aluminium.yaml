@@ -1,0 +1,22 @@
+# Illustrative dataset - educational comparison only.
+# Fatigue properties are condition-specific. Results depend on the selected
+# dataset and may not apply to a real component.
+
+name: "Illustrative Aluminium Alloy"
+density_kg_m3: 2700
+youngs_modulus_gpa: 70
+yield_strength_mpa: 240
+ultimate_strength_mpa: 310
+basquin_coefficient_mpa: 620
+basquin_exponent: -0.15
+life_range_min_cycles: 1000
+life_range_max_cycles: 1e+08
+product_form: "illustrative"
+heat_treatment: "illustrative"
+surface_condition: "illustrative"
+environment: "illustrative"
+stress_ratio_r: -1
+source: "Illustrative textbook-style values for educational comparison only; not a measured dataset."
+confidence: "illustrative"
+condition_note: "Order-of-magnitude values loosely representative of a wrought aluminium alloy in laboratory air; for comparative studies only."
+notes: ""

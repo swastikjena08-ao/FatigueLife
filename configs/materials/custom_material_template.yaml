@@ -1,0 +1,31 @@
+# Custom material dataset template for FatigueLife.
+#
+# Fatigue properties are condition-specific. Results depend on the selected
+# dataset and may not apply to a real component.
+#
+# Fill in EVERY field. Vague names like "steel" or "aluminium" are rejected:
+# specify an exact grade/alloy and the fatigue dataset conditions. Provide
+# either basquin_coefficient_mpa + basquin_exponent, OR sn_points_mpa_cycles.
+
+name: "AA6061-T6"                      # exact material designation / alloy
+product_form: "extruded bar"           # plate, bar, sheet, extrusion, casting, ...
+heat_treatment: "T6"                   # heat treatment / manufacturing condition
+surface_condition: "machined"          # e.g. polished, machined, as-rolled
+environment: "lab air, room temperature"
+stress_ratio_r: -1.0                   # fatigue stress ratio R of the dataset
+density_kg_m3: 2700
+youngs_modulus_gpa: 68.9
+yield_strength_mpa: 276
+ultimate_strength_mpa: 310
+basquin_coefficient_mpa: 620           # A in sigma_a = A * N^b
+basquin_exponent: -0.12                # b (must be negative)
+# sn_points_mpa_cycles:                # alternative to A and b:
+#   - [200, 10000]                     #   [stress amplitude in MPa, cycles]
+#   - [150, 100000]
+#   - [110, 1000000]
+life_range_min_cycles: 1000            # applicable range of the S-N data
+life_range_max_cycles: 100000000
+source: "Datasheet / report / DOI the numbers were taken from (user-reviewed)"
+confidence: low                        # high / moderate / low / illustrative
+condition_note: "Describe the tested condition the data applies to."
+notes: ""

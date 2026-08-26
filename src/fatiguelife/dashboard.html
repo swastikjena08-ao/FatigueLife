@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FatigueLife</title>
+<style>
+:root {
+  --ink: #16301f; --muted: #4f6a58; --line: #cfe3d5; --bg: #ffffff;
+  --card: #ffffff; --accent: #1b7a3d;
+  --valid: #2e7d32; --warn: #b26a00; --invalid: #b71c1c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 1360px; margin: 0 auto; padding: 16px; }
+header { border-bottom: 3px solid var(--accent); padding: 12px 0; }
+h1 { margin: 0 0 4px; font-size: 26px; }
+h2 { font-size: 19px; margin: 0 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin: 14px 0; }
+.scope-warning { color: var(--warn); font-size: 13px; margin: 6px 0 0; }
+.muted { color: var(--muted); font-size: 13px; }
+.badge { display: inline-block; padding: 3px 12px; border-radius: 12px; color: #fff; font-weight: 600; }
+.badge-valid { background: var(--valid); } .badge-warning { background: var(--warn); } .badge-invalid { background: var(--invalid); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+label { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
+input[type=number], select, input[type=text] {
+  width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px;
+  font: inherit; background: #fff;
+}
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.card { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; background: #f6faf7; }
+.card .k { font-size: 12px; color: var(--muted); }
+.card .v { font-size: 19px; font-weight: 650; }
+#warnings li { color: var(--warn); }
+#warnings li.err { color: var(--invalid); font-weight: 600; }
+svg { max-width: 100%; height: auto; background: #fff; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: right; }
+th { background: #eaf5ee; }
+button {
+  font: inherit; padding: 6px 14px; margin: 4px 4px 4px 0; border: 1px solid var(--accent);
+  background: #fff; color: var(--accent); border-radius: 5px; cursor: pointer;
+}
+button:hover { background: var(--accent); color: #fff; }
+button.active { background: var(--accent); color: #fff; }
+pre { background: #f0f7f2; border: 1px solid var(--line); border-radius: 6px; padding: 10px; overflow-x: auto; font-size: 12px; }
+dl.props { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; font-size: 13px; margin: 8px 0 0; }
+dl.props dt { color: var(--muted); } dl.props dd { margin: 0; }
+.hidden { display: none; }
+.note { font-size: 13px; color: var(--muted); font-style: italic; }
+.layout { display: grid; grid-template-columns: 390px 1fr; gap: 14px; align-items: start; }
+.col-left { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow-y: auto; }
+.col-left .two-col { grid-template-columns: 1fr; }
+@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .col-left { position: static; max-height: none; } }
+#tooltip { position: fixed; display: none; pointer-events: none; background: #16301f; color: #fff;
+  padding: 4px 9px; border-radius: 4px; font-size: 12px; z-index: 10; white-space: nowrap; }
+.pt { cursor: pointer; }
+.pt:hover { stroke: #16301f; stroke-width: 2; }
+.eqs { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; background: #f6faf7; }
+.eq { font-family: Georgia, "Times New Roman", serif; font-size: 15px; padding: 2px 0; }
+.eq sub, .eq sup, .card .k sub, .card .k sup { font-size: 0.7em; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>FatigueLife <span id="status-badge" class="badge badge-warning">…</span></h1>
+  <p class="muted"><strong>Research question:</strong> How do cyclic load amplitude, mean stress,
+  beam geometry, material properties, and notch severity affect predicted high-cycle fatigue
+  life and minimum-mass design of a cantilever bracket?</p>
+  <p class="scope-warning">This is an educational comparative model. It uses simplified beam
+  theory, Basquin S–N fatigue curves, Modified Goodman mean-stress correction, and a simplified
+  notch factor. It does not provide certified component-life predictions or replace experimental
+  fatigue testing.</p>
+</header>
+
+<div class="layout">
+<div class="col-left">
+
+<section id="inputs">
+  <h2>Model Inputs</h2>
+  <div class="two-col">
+    <div>
+      <label>Beam length <i>L</i> (mm) <input type="number" id="in-length" step="any" min="0"></label>
+      <label>Width <i>b</i> (mm) <input type="number" id="in-width" step="any" min="0"></label>
+      <label>Thickness <i>h</i> (mm) <input type="number" id="in-thickness" step="any" min="0"></label>
+      <label>Alternating load <i>P</i><sub>a</sub> (N) <input type="number" id="in-pa" step="any"></label>
+      <label>Mean load <i>P</i><sub>m</sub> (N) <input type="number" id="in-pm" step="any"></label>
+      <label>Frequency <i>f</i> (Hz, display only) <input type="number" id="in-frequency" step="any" min="0"></label>
+      <label>Notch factor <i>K</i><sub>f</sub> (≥ 1) <input type="number" id="in-kf" step="any" min="1"></label>
+      <label>Target life <i>N</i><sub>target</sub> (cycles) <input type="number" id="in-target-life" step="any" min="1"></label>
+      <label>Required yield safety factor <i>n</i><sub>y,min</sub> <input type="number" id="in-min-ny" step="any" min="0"></label>
+    </div>
+    <div>
+      <svg viewBox="0 0 420 220" role="img" aria-label="Cantilever beam diagram">
+        <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="7" orient="auto">
+          <path d="M0,0 L8,0 L4,8 z" fill="#b71c1c"/></marker></defs>
+        <line x1="60" y1="30" x2="60" y2="190" stroke="#1c2530" stroke-width="3"/>
+        <g stroke="#5a6a7a" stroke-width="1.5">
+          <line x1="60" y1="40" x2="44" y2="56"/><line x1="60" y1="70" x2="44" y2="86"/>
+          <line x1="60" y1="100" x2="44" y2="116"/><line x1="60" y1="130" x2="44" y2="146"/>
+          <line x1="60" y1="160" x2="44" y2="176"/>
+        </g>
+        <rect x="60" y="95" width="290" height="30" fill="#b7dcc4" stroke="#1b7a3d" stroke-width="2"/>
+        <line x1="350" y1="70" x2="350" y2="92" stroke="#b71c1c" stroke-width="3" marker-end="url(#arr)"/>
+        <text x="360" y="66" font-size="15" fill="#b71c1c">P(t)</text>
+        <text x="66" y="86" font-size="13" fill="#1c2530">fixed end</text>
+        <text x="150" y="150" font-size="13" fill="#5a6a7a">length L, width b, thickness h</text>
+        <text x="80" y="200" font-size="15" fill="#16301f" font-style="italic">P(t) = P<tspan font-size="11" dy="3">m</tspan><tspan dy="-3"> + P</tspan><tspan font-size="11" dy="3">a</tspan><tspan dy="-3">·sin(ωt)</tspan></text>
+      </svg>
+      <p class="muted">Rectangular cantilever fixed at the left end with a cyclic transverse
+      load at the free end. Frequency is shown for context only; constant-amplitude
+      stress-life results do not depend on it.</p>
+      <h3 class="muted">Model equations</h3>
+      <div class="eqs">
+        <div class="eq"><i>I</i> = <i>bh</i><sup>3</sup>/12</div>
+        <div class="eq"><i>σ</i><sub>a</sub> = 6<i>P</i><sub>a</sub><i>L</i>/(<i>bh</i><sup>2</sup>),&ensp;<i>σ</i><sub>m</sub> = 6<i>P</i><sub>m</sub><i>L</i>/(<i>bh</i><sup>2</sup>)</div>
+        <div class="eq"><i>σ</i><sub>a,local</sub> = <i>K</i><sub>f</sub><i>σ</i><sub>a</sub>,&ensp;<i>σ</i><sub>m,local</sub> = <i>K</i><sub>f</sub><i>σ</i><sub>m</sub></div>
+        <div class="eq"><i>σ</i><sub>a,eq</sub> = <i>σ</i><sub>a,local</sub>/(1 − <i>σ</i><sub>m,local</sub>/<i>S</i><sub>ut</sub>)</div>
+        <div class="eq"><i>σ</i><sub>a,eq</sub> = <i>A</i>·<i>N</i><sub>f</sub><sup><i>b</i></sup>&ensp;⇒&ensp;<i>N</i><sub>f</sub> = (<i>σ</i><sub>a,eq</sub>/<i>A</i>)<sup>1/<i>b</i></sup></div>
+        <div class="eq"><i>σ</i><sub>max,local</sub> = <i>K</i><sub>f</sub>(<i>σ</i><sub>m</sub> + <i>σ</i><sub>a</sub>),&ensp;<i>n</i><sub>y</sub> = <i>S</i><sub>y</sub>/<i>σ</i><sub>max,local</sub></div>
+        <div class="eq"><i>m</i> = <i>ρLbh</i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="material">
+  <h2>Material Assistant</h2>
+  <div class="two-col">
+    <div>
+      <label>Illustrative preset <select id="material-preset"></select></label>
+      <button id="btn-custom-material" type="button">Use custom material</button>
+      <p class="scope-warning" id="material-notice"></p>
+    </div>
+    <div>
+      <dl class="props" id="material-props"></dl>
+    </div>
+  </div>
+  <div id="custom-material-panel" class="hidden">
+    <h2>Custom material dataset</h2>
+    <p class="muted">All fields are required. Vague names such as “steel” or “aluminium”
+    are rejected — give the exact grade/alloy and the dataset's tested condition. Nothing is
+    fetched from the internet and no similar material is ever substituted.</p>
+    <div class="two-col">
+      <div>
+        <label>Exact designation / alloy <input type="text" id="mat-name" placeholder="e.g. AA6061-T6"></label>
+        <label>Product form <input type="text" id="mat-form" placeholder="plate, bar, sheet, extrusion, casting…"></label>
+        <label>Heat treatment / condition <input type="text" id="mat-heat"></label>
+        <label>Surface condition <input type="text" id="mat-surface"></label>
+        <label>Environment <input type="text" id="mat-env"></label>
+        <label>Stress ratio <i>R</i> <input type="number" id="mat-r" step="any" value="-1"></label>
+        <label>Confidence
+          <select id="mat-confidence">
+            <option value="high">high</option><option value="moderate">moderate</option>
+            <option value="low" selected>low</option><option value="illustrative">illustrative</option>
+          </select></label>
+      </div>
+      <div>
+        <label>Density (kg/m³) <input type="number" id="mat-density" step="any"></label>
+        <label>Young's modulus <i>E</i> (GPa) <input type="number" id="mat-e" step="any"></label>
+        <label>Yield strength <i>S</i><sub>y</sub> (MPa) <input type="number" id="mat-sy" step="any"></label>
+        <label>Ultimate strength <i>S</i><sub>ut</sub> (MPa) <input type="number" id="mat-sut" step="any"></label>
+        <label>Basquin coefficient <i>A</i> (MPa) <input type="number" id="mat-a" step="any"></label>
+        <label>Basquin exponent <i>b</i> (negative) <input type="number" id="mat-b" step="any"></label>
+        <label>Applicable life range (cycles) min / max
+          <input type="number" id="mat-nmin" step="any" value="1000">
+          <input type="number" id="mat-nmax" step="any" value="100000000"></label>
+        <label>Source citation (URL, DOI, report, datasheet) <input type="text" id="mat-source"></label>
+        <label>Notes <input type="text" id="mat-notes"></label>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="col-right">
+<section id="results">
+  <h2>Key Results</h2>
+  <div class="cards">
+    <div class="card" id="card-life"><div class="k">Predicted fatigue life <i>N</i><sub>f</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-mass"><div class="k">Beam mass <i>m</i> = <i>ρLbh</i></div><div class="v">…</div></div>
+    <div class="card" id="card-sigma-a"><div class="k">Nominal alternating stress <i>σ</i><sub>a</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-sigma-a-local"><div class="k">Local alternating stress <i>σ</i><sub>a,local</sub> = <i>K</i><sub>f</sub><i>σ</i><sub>a</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-sigma-m"><div class="k">Nominal mean stress <i>σ</i><sub>m</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-goodman-eq"><div class="k">Goodman equivalent stress <i>σ</i><sub>a,eq</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-sigma-max"><div class="k">Maximum local stress <i>σ</i><sub>max,local</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-ny"><div class="k">Yield safety factor <i>n</i><sub>y</sub> = <i>S</i><sub>y</sub>/<i>σ</i><sub>max,local</sub></div><div class="v">…</div></div>
+    <div class="card" id="card-status"><div class="k">Result status</div><div class="v">…</div></div>
+  </div>
+  <ul id="warnings"></ul>
+</section>
+
+<section id="sn-chart">
+  <h2>S–N Curve</h2>
+  <div id="svg-sn-wrap"></div>
+  <p class="muted" id="sn-meta"></p>
+  <button type="button" data-dl="svg-sn">Download SVG</button>
+</section>
+
+<section id="goodman-chart">
+  <h2>Goodman Diagram</h2>
+  <div id="svg-goodman-wrap"></div>
+  <p id="goodman-verdict"></p>
+  <p class="note">The Modified Goodman line is a simplified screening criterion for mean-stress
+  effects, drawn here at the target-life strength. It is not a general design envelope;
+  compressive mean stress is given no beneficial credit.</p>
+  <button type="button" data-dl="svg-goodman">Download SVG</button>
+</section>
+
+<section id="studies">
+  <h2>Parameter Studies</h2>
+  <div id="study-buttons"></div>
+  <div class="two-col">
+    <div><h3 class="muted">Fatigue life vs parameter</h3><div id="svg-study-life-wrap"></div></div>
+    <div><h3 class="muted">Yield safety factor vs parameter</h3><div id="svg-study-ny-wrap"></div></div>
+  </div>
+  <table id="study-table"></table>
+  <button id="btn-study-csv" type="button">Export study CSV</button>
+</section>
+
+<section id="sensitivity">
+  <h2>Sensitivity Analysis</h2>
+  <p class="muted">Log–log elasticity d ln(N<sub>f</sub>)/d ln(x): the approximate % change in
+  predicted life per 1% increase in each input, at the current operating point.</p>
+  <div id="svg-sensitivity-wrap"></div>
+  <ul id="sensitivity-text"></ul>
+</section>
+
+<section id="sizing">
+  <h2>Lightweight Design Study</h2>
+  <div class="two-col">
+    <div>
+      <label>Width min / max (mm)
+        <input type="number" id="opt-wmin" step="any"> <input type="number" id="opt-wmax" step="any"></label>
+      <label>Thickness min / max (mm)
+        <input type="number" id="opt-hmin" step="any"> <input type="number" id="opt-hmax" step="any"></label>
+      <label>Grid points per axis <input type="number" id="opt-grid" step="1" min="2"></label>
+      <button id="btn-sizing" type="button">Run sizing study</button>
+    </div>
+    <div class="cards"><div class="card" id="card-best"><div class="k">Minimum-mass feasible design</div><div class="v">not run yet</div></div></div>
+  </div>
+  <table id="sizing-table"></table>
+  <p class="note">This is a grid-based preliminary sizing study, not full shape optimization.</p>
+  <button id="btn-sizing-csv" type="button">Export sizing CSV</button>
+</section>
+
+<section id="assumptions">
+  <h2>Assumptions and Limitations</h2>
+  <ul id="assumptions-list"></ul>
+</section>
+
+<section id="export">
+  <h2>Export and Reproducibility</h2>
+  <button id="btn-json" type="button">Download summary JSON</button>
+  <button id="btn-csv" type="button">Download summary CSV</button>
+  <button id="btn-copy-config" type="button">Copy config</button>
+  <p class="muted">Configuration in use (paste into a YAML/JSON config file for a reproducible
+  CLI run):</p>
+  <pre id="config-echo"></pre>
+</section>
+
+</div>
+</div>
+
+</main>
+<div id="tooltip"></div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const PARAM_HTML = { alternating_load_n: "<i>P</i><sub>a</sub> (N)", mean_load_n: "<i>P</i><sub>m</sub> (N)",
+  thickness_mm: "<i>h</i> (mm)", width_mm: "<i>b</i> (mm)", length_mm: "<i>L</i> (mm)", notch_factor: "<i>K</i><sub>f</sub>" };
+const PARAM_SVG = { alternating_load_n: 'P<tspan font-size="9" dy="2">a</tspan><tspan dy="-2"> (N)</tspan>',
+  mean_load_n: 'P<tspan font-size="9" dy="2">m</tspan><tspan dy="-2"> (N)</tspan>',
+  thickness_mm: "h (mm)", width_mm: "b (mm)", length_mm: "L (mm)",
+  notch_factor: 'K<tspan font-size="9" dy="2">f</tspan>' };
+const PARAM_TIP = { alternating_load_n: "Pa (N)", mean_load_n: "Pm (N)", thickness_mm: "h (mm)",
+  width_mm: "b (mm)", length_mm: "L (mm)", notch_factor: "Kf" };
+const state = { summary: null, presets: {}, custom: false, sweep: null, sizing: null,
+                sweepable: [], studyParam: "alternating_load_n" };
+
+function fmtCycles(n) {
+  if (n == null) return "n/a";
+  return n >= 1e5 ? n.toExponential(2) : Math.round(n).toString();
+}
+function fmt(x, d = 1) { return x == null ? "n/a" : x.toFixed(d); }
+
+function readInputs() {
+  const payload = {
+    geometry: { length_mm: +$("in-length").value, width_mm: +$("in-width").value,
+                thickness_mm: +$("in-thickness").value },
+    loading: { alternating_load_n: +$("in-pa").value, mean_load_n: +$("in-pm").value,
+               frequency_hz: +$("in-frequency").value },
+    fatigue: { notch_factor: +$("in-kf").value, target_life_cycles: +$("in-target-life").value,
+               minimum_yield_safety_factor: +$("in-min-ny").value },
+    material: state.custom ? { custom: readCustomMaterial() }
+                           : { preset: $("material-preset").value },
+  };
+  return payload;
+}
+
+function readCustomMaterial() {
+  return {
+    name: $("mat-name").value, product_form: $("mat-form").value,
+    heat_treatment: $("mat-heat").value, surface_condition: $("mat-surface").value,
+    environment: $("mat-env").value, stress_ratio_r: +$("mat-r").value,
+    density_kg_m3: +$("mat-density").value, youngs_modulus_gpa: +$("mat-e").value,
+    yield_strength_mpa: +$("mat-sy").value, ultimate_strength_mpa: +$("mat-sut").value,
+    basquin_coefficient_mpa: +$("mat-a").value, basquin_exponent: +$("mat-b").value,
+    life_range_min_cycles: +$("mat-nmin").value, life_range_max_cycles: +$("mat-nmax").value,
+    source: $("mat-source").value, confidence: $("mat-confidence").value,
+    notes: $("mat-notes").value,
+  };
+}
+
+async function api(path, payload) {
+  const res = await fetch(path, payload === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+  return data;
+}
+
+/* ---------- SVG chart helpers ---------- */
+const W = 460, H = 300, M = { l: 62, r: 16, t: 14, b: 44 };
+function linScale(d0, d1, r0, r1) { return v => r0 + (v - d0) / (d1 - d0) * (r1 - r0); }
+function logScale(d0, d1, r0, r1) {
+  const a = Math.log10(d0), b = Math.log10(d1);
+  return v => r0 + (Math.log10(v) - a) / (b - a) * (r1 - r0);
+}
+function logTicks(min, max) {
+  const t = [];
+  for (let e = Math.floor(Math.log10(min)); e <= Math.ceil(Math.log10(max)); e++) t.push(10 ** e);
+  const f = t.filter(v => v >= min * 0.999 && v <= max * 1.001);
+  const step = Math.ceil(f.length / 9);
+  return step > 1 ? f.filter((_, i) => i % step === 0) : f;
+}
+function svgOpen(id) {
+  return `<svg id="${id}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">`
+       + `<rect width="${W}" height="${H}" fill="#ffffff"/>`;
+}
+function axisLabels(xlab, ylab) {
+  return `<text x="${(M.l + W - M.r) / 2}" y="${H - 8}" font-size="12" text-anchor="middle">${xlab}</text>`
+       + `<text x="14" y="${(M.t + H - M.b) / 2}" font-size="12" text-anchor="middle" transform="rotate(-90 14 ${(M.t + H - M.b) / 2})">${ylab}</text>`;
+}
+function frame() {
+  return `<rect x="${M.l}" y="${M.t}" width="${W - M.l - M.r}" height="${H - M.t - M.b}" fill="none" stroke="#d7dee6"/>`;
+}
+function xTick(px, label) {
+  return `<line x1="${px}" y1="${H - M.b}" x2="${px}" y2="${H - M.b + 4}" stroke="#5a6a7a"/>`
+       + `<text x="${px}" y="${H - M.b + 16}" font-size="10" text-anchor="middle">${label}</text>`;
+}
+function yTick(py, label) {
+  return `<line x1="${M.l - 4}" y1="${py}" x2="${M.l}" y2="${py}" stroke="#5a6a7a"/>`
+       + `<text x="${M.l - 7}" y="${py + 3}" font-size="10" text-anchor="end">${label}</text>`;
+}
+function expLabel(v) {
+  const e = Math.round(Math.log10(v));
+  return (Math.abs(Math.log10(v) - e) < 1e-9) ? `1e${e}` : v.toPrecision(2);
+}
+
+function ptCircle(cx, cy, xText, yText, color, r = 4) {
+  return `<circle class="pt" cx="${cx}" cy="${cy}" r="${r}" fill="${color}" data-tip="${xText}  |  ${yText}"/>`;
+}
+document.addEventListener("mouseover", e => {
+  if (e.target.classList && e.target.classList.contains("pt")) {
+    const tip = $("tooltip");
+    tip.textContent = e.target.dataset.tip;
+    tip.style.display = "block";
+  }
+});
+document.addEventListener("mousemove", e => {
+  const tip = $("tooltip");
+  if (tip.style.display === "block") {
+    const r = tip.getBoundingClientRect();
+    const x = (e.clientX + 14 + r.width > window.innerWidth) ? e.clientX - r.width - 10 : e.clientX + 14;
+    const y = (e.clientY + 14 + r.height > window.innerHeight) ? e.clientY - r.height - 10 : e.clientY + 14;
+    tip.style.left = Math.max(4, x) + "px";
+    tip.style.top = Math.max(4, y) + "px";
+  }
+});
+document.addEventListener("mouseout", e => {
+  if (e.target.classList && e.target.classList.contains("pt")) $("tooltip").style.display = "none";
+});
+
+function renderSN(data) {
+  const sn = data.sn_curve, op = data.operating_point;
+  const xs = sn.cycles, ys = sn.stress_mpa;
+  const hasOp = op.cycles != null && op.stress_mpa != null && op.cycles > 0 && op.stress_mpa > 0;
+  const xlo = (hasOp ? Math.min(xs[0], op.cycles) : xs[0]) / 1.5;
+  const xhi = (hasOp ? Math.max(xs[xs.length - 1], op.cycles) : xs[xs.length - 1]) * 1.5;
+  let ymin = Math.min(...ys), ymax = Math.max(...ys);
+  if (hasOp) { ymin = Math.min(ymin, op.stress_mpa); ymax = Math.max(ymax, op.stress_mpa); }
+  ymin *= 0.8; ymax *= 1.25;
+  const X = logScale(xlo, xhi, M.l, W - M.r);
+  const Y = logScale(ymin, ymax, H - M.b, M.t);
+  let s = svgOpen("svg-sn") + frame();
+  logTicks(xlo, xhi).forEach(v => s += xTick(X(v), expLabel(v)));
+  logTicks(ymin, ymax).forEach(v => s += yTick(Y(v), expLabel(v)));
+  s += `<polyline fill="none" stroke="#1b7a3d" stroke-width="2" points="${xs.map((x, i) => X(x) + "," + Y(ys[i])).join(" ")}"/>`;
+  xs.forEach((x, i) => { if (i % 3 === 0) s += ptCircle(X(x), Y(ys[i]), `Nf = ${fmtCycles(x)}`, `σₐ = ${ys[i].toFixed(1)} MPa`, "#1b7a3d", 3); });
+  if (hasOp) {
+    const px = X(op.cycles), py = Y(op.stress_mpa);
+    s += ptCircle(px, py, `Nf = ${fmtCycles(op.cycles)}`, `σₐ,eq = ${op.stress_mpa.toFixed(1)} MPa`, "#b71c1c", 5);
+    const anchor = px > W - 120 ? "end" : "start";
+    const tx = anchor === "end" ? px - 9 : px + 9;
+    const ty = py < M.t + 20 ? py + 18 : py - 9;
+    s += `<text x="${tx}" y="${ty}" font-size="11" fill="#b71c1c" text-anchor="${anchor}">operating point</text>`;
+  }
+  s += axisLabels('cycles to failure N<tspan font-size="9" dy="2">f</tspan><tspan dy="-2"> (log)</tspan>', 'stress amplitude σ<tspan font-size="9" dy="2">a,eq</tspan><tspan dy="-2"> (MPa, log)</tspan>') + "</svg>";
+  $("svg-sn-wrap").innerHTML = s;
+  const m = data.material;
+  $("sn-meta").textContent = `${m.name} — confidence: ${m.confidence}; condition: ${m.product_form}, `
+    + `${m.heat_treatment}, ${m.surface_condition}, ${m.environment}, R=${m.stress_ratio_r}; source: ${m.source}`;
+}
+
+function renderGoodman(data) {
+  const g = data.goodman;
+  const xmin = Math.min(0, (g.mean_mpa || 0) * 1.15);
+  const xmax = Math.max(g.sut_mpa * 1.1, (g.mean_mpa || 0) * 1.15);
+  const ymax = Math.max(g.target_life_strength_mpa, g.alt_mpa || 0) * 1.3;
+  const X = linScale(xmin, xmax, M.l, W - M.r), Y = linScale(0, ymax, H - M.b, M.t);
+  let s = svgOpen("svg-goodman") + frame();
+  for (let i = 0; i <= 4; i++) {
+    const xv = xmin + (xmax - xmin) * i / 4;
+    s += xTick(X(xv), xv.toFixed(0));
+    s += yTick(Y(ymax * i / 4), (ymax * i / 4).toFixed(0));
+  }
+  if (xmin < 0) s += `<line x1="${X(0)}" y1="${M.t}" x2="${X(0)}" y2="${H - M.b}" stroke="#cfe3d5" stroke-dasharray="4 3"/>`;
+  s += `<line x1="${X(0)}" y1="${Y(g.target_life_strength_mpa)}" x2="${X(g.sut_mpa)}" y2="${Y(0)}" stroke="#1b7a3d" stroke-width="2"/>`
+     + `<text x="${X(g.sut_mpa * 0.45)}" y="${Y(g.target_life_strength_mpa * 0.60) - 6}" font-size="11" fill="#1b7a3d">Modified Goodman line (target life)</text>`
+     + `<line x1="${X(g.sut_mpa)}" y1="${Y(0)}" x2="${X(g.sut_mpa)}" y2="${Y(0) + 5}" stroke="#5a6a7a"/>`
+     + `<text x="${X(g.sut_mpa)}" y="${H - M.b + 28}" font-size="10" text-anchor="middle">S<tspan font-size="8" dy="2">ut</tspan></text>`;
+  if (g.mean_mpa != null && g.alt_mpa != null) {
+    s += ptCircle(X(g.mean_mpa), Y(g.alt_mpa), `σₘ = ${g.mean_mpa.toFixed(1)} MPa`, `σₐ = ${g.alt_mpa.toFixed(1)} MPa`, g.safe ? "#2e7d32" : "#b71c1c", 5);
+  }
+  s += axisLabels('mean stress σ<tspan font-size="9" dy="2">m,local</tspan><tspan dy="-2"> (MPa)</tspan>', 'alternating stress σ<tspan font-size="9" dy="2">a,local</tspan><tspan dy="-2"> (MPa)</tspan>') + "</svg>";
+  $("svg-goodman-wrap").innerHTML = s;
+  if (g.safe == null) $("goodman-verdict").textContent = "Operating point unavailable.";
+  else {
+    $("goodman-verdict").textContent = g.safe
+      ? "Operating point is inside the screening line for the target life: SAFE by this simplified criterion."
+      : "Operating point is outside the screening line for the target life: UNSAFE by this simplified criterion.";
+    $("goodman-verdict").style.color = g.safe ? "var(--valid)" : "var(--invalid)";
+  }
+}
+
+function renderXY(wrapId, svgId, values, ys, xlab, ylab, logY, xtip, ytip) {
+  const pairs = values.map((v, i) => [v, ys[i]]).filter(p => p[1] != null && p[1] > 0);
+  if (!pairs.length) { $(wrapId).innerHTML = "<p class='muted'>No valid points.</p>"; return; }
+  const xmin = Math.min(...values), xmax = Math.max(...values);
+  const yvals = pairs.map(p => p[1]);
+  let ymin = Math.min(...yvals), ymax = Math.max(...yvals);
+  if (ymin === ymax) { ymin *= 0.8; ymax *= 1.25; }
+  const X = linScale(xmin, xmax, M.l, W - M.r);
+  const Y = logY ? logScale(ymin, ymax, H - M.b, M.t) : linScale(ymin, ymax, H - M.b, M.t);
+  let s = svgOpen(svgId) + frame();
+  for (let i = 0; i <= 4; i++) s += xTick(X(xmin + (xmax - xmin) * i / 4), (xmin + (xmax - xmin) * i / 4).toPrecision(3));
+  if (logY) logTicks(ymin, ymax).forEach(v => s += yTick(Y(v), expLabel(v)));
+  else for (let i = 0; i <= 4; i++) s += yTick(Y(ymin + (ymax - ymin) * i / 4), (ymin + (ymax - ymin) * i / 4).toPrecision(3));
+  s += `<polyline fill="none" stroke="#1b7a3d" stroke-width="2" points="${pairs.map(p => X(p[0]) + "," + Y(p[1])).join(" ")}"/>`;
+  pairs.forEach(p => s += ptCircle(X(p[0]), Y(p[1]), `${xtip || xlab} = ${p[0].toPrecision(4)}`, `${ytip || ylab} = ${logY ? fmtCycles(p[1]) : p[1].toFixed(2)}`, "#1b7a3d", 4));
+  s += axisLabels(xlab, ylab) + "</svg>";
+  $(wrapId).innerHTML = s;
+}
+
+function renderSensitivity(rows) {
+  const el = rows.filter(r => r.kind === "elasticity" && r.value != null);
+  const vmax = Math.max(...el.map(r => Math.abs(r.value)), 1e-9);
+  const bh = 26, h = M.t + el.length * (bh + 8) + 30;
+  const X = linScale(0, vmax, 170, W - M.r);
+  let s = `<svg id="svg-sensitivity" viewBox="0 0 ${W} ${h}" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif"><rect width="${W}" height="${h}" fill="#fff"/>`;
+  el.forEach((r, i) => {
+    const y = M.t + i * (bh + 8);
+    const w = X(Math.abs(r.value)) - 170;
+    s += `<text x="164" y="${y + 17}" font-size="12" text-anchor="end">${r.parameter}</text>`
+       + `<rect class="pt" x="170" y="${y}" width="${w}" height="${bh}" data-tip="${r.parameter}: d ln(Nf)/d ln(x) = ${r.value.toFixed(2)}" fill="${r.value >= 0 ? "#2e7d32" : "#b26a00"}"/>`
+       + `<text x="${174 + w}" y="${y + 17}" font-size="11">${r.value.toFixed(1)}</text>`;
+  });
+  s += `<text x="170" y="${h - 6}" font-size="11" fill="#5a6a7a">|d ln N<tspan font-size="8" dy="2">f</tspan><tspan dy="-2"> / d ln x|  (green: life increases with x; orange: decreases)</tspan></text></svg>`;
+  $("svg-sensitivity-wrap").innerHTML = s;
+  $("sensitivity-text").innerHTML = rows.map(r => `<li>${r.interpretation}</li>`).join("");
+}
+
+/* ---------- renderers ---------- */
+function setCard(id, text) { $(id).querySelector(".v").textContent = text; }
+
+function renderAll(data) {
+  state.summary = data;
+  const r = data.results;
+  const badge = $("status-badge");
+  badge.textContent = r.badge;
+  badge.className = "badge badge-" + r.badge.toLowerCase();
+  setCard("card-life", r.fatigue_life_cycles != null ? fmtCycles(r.fatigue_life_cycles) + " cycles" : "no prediction");
+  setCard("card-mass", r.mass_g >= 1000 ? (r.mass_g / 1000).toFixed(3) + " kg" : fmt(r.mass_g) + " g");
+  setCard("card-sigma-a", fmt(r.nominal_alternating_stress_mpa) + " MPa");
+  setCard("card-sigma-a-local", fmt(r.local_alternating_stress_mpa) + " MPa");
+  setCard("card-sigma-m", fmt(r.nominal_mean_stress_mpa) + " MPa");
+  setCard("card-goodman-eq", fmt(r.goodman_equivalent_stress_mpa) + " MPa");
+  setCard("card-sigma-max", fmt(r.max_local_stress_mpa) + " MPa");
+  setCard("card-ny", fmt(r.yield_safety_factor, 2));
+  setCard("card-status", r.status);
+  $("warnings").innerHTML =
+    data.errors.map(e => `<li class="err">INVALID: ${e}</li>`).join("")
+    + data.warnings.map(w => `<li>WARNING: ${w}</li>`).join("");
+  renderMaterialProps(data.material);
+  renderSN(data);
+  renderGoodman(data);
+  $("config-echo").textContent = JSON.stringify(currentConfig(), null, 2);
+}
+
+function renderMaterialProps(m) {
+  const rows = [["name", m.name], ["confidence", m.confidence], ["source", m.source],
+    ["product form", m.product_form], ["heat treatment", m.heat_treatment],
+    ["surface", m.surface_condition], ["environment", m.environment],
+    ["stress ratio <i>R</i>", m.stress_ratio_r], ["density <i>ρ</i>", m.density_kg_m3 + " kg/m³"],
+    ["<i>E</i>", m.youngs_modulus_gpa.toFixed(1) + " GPa"], ["<i>S</i><sub>y</sub>", m.yield_strength_mpa.toFixed(0) + " MPa"],
+    ["<i>S</i><sub>ut</sub>", m.ultimate_strength_mpa.toFixed(0) + " MPa"],
+    ["Basquin <i>A</i>", m.basquin_coefficient_mpa.toFixed(0) + " MPa"], ["Basquin <i>b</i>", m.basquin_exponent],
+    ["life range", fmtCycles(m.life_range_min_cycles) + " – " + fmtCycles(m.life_range_max_cycles) + " cycles"],
+    ["condition note", m.condition_note || "—"]];
+  $("material-props").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+}
+
+function currentConfig() {
+  const p = readInputs();
+  return { project: { title: "Interactive fatigue study" }, geometry: p.geometry,
+           loading: p.loading, material: p.material, fatigue: p.fatigue };
+}
+
+/* ---------- studies ---------- */
+async function runStudy(parameter) {
+  state.studyParam = parameter;
+  document.querySelectorAll("#study-buttons button").forEach(b =>
+    b.classList.toggle("active", b.dataset.p === parameter));
+  const payload = readInputs();
+  payload.parameter = parameter;
+  try {
+    const data = await api("/api/sweep", payload);
+    state.sweep = data;
+    const values = data.points.map(p => p.value);
+    renderXY("svg-study-life-wrap", "svg-study-life", values, data.points.map(p => p.life),
+             PARAM_SVG[parameter] || parameter,
+             'fatigue life N<tspan font-size="9" dy="2">f</tspan><tspan dy="-2"> (cycles, log)</tspan>', true,
+             PARAM_TIP[parameter] || parameter, "Nf");
+    renderXY("svg-study-ny-wrap", "svg-study-ny", values, data.points.map(p => p.ny),
+             PARAM_SVG[parameter] || parameter,
+             'yield safety factor n<tspan font-size="9" dy="2">y</tspan>', false,
+             PARAM_TIP[parameter] || parameter, "n_y");
+    $("study-table").innerHTML = "<tr><th>" + (PARAM_HTML[parameter] || "value")
+      + "</th><th><i>N</i><sub>f</sub> (cycles)</th><th><i>n</i><sub>y</sub></th><th>status</th></tr>"
+      + data.points.map(p => `<tr><td>${p.value.toPrecision(4)}</td><td>${fmtCycles(p.life)}</td>`
+        + `<td>${fmt(p.ny, 2)}</td><td>${p.badge}</td></tr>`).join("");
+  } catch (err) { showError(err); }
+}
+
+async function runSensitivity() {
+  try { renderSensitivity((await api("/api/sensitivity", readInputs())).results); }
+  catch (err) { $("sensitivity-text").innerHTML = `<li class="err">${err.message}</li>`; }
+}
+
+async function runSizing() {
+  const payload = readInputs();
+  payload.optimization = {
+    width_min_mm: +$("opt-wmin").value, width_max_mm: +$("opt-wmax").value,
+    thickness_min_mm: +$("opt-hmin").value, thickness_max_mm: +$("opt-hmax").value,
+    grid_points: +$("opt-grid").value };
+  try {
+    const data = await api("/api/optimize", payload);
+    state.sizing = data;
+    if (data.best) {
+      setCard("card-best", `b=${data.best.width_mm.toFixed(2)} mm, h=${data.best.thickness_mm.toFixed(2)} mm, `
+        + `${(data.best.mass_kg * 1000).toFixed(1)} g, life ${fmtCycles(data.best.life)}, n_y ${fmt(data.best.ny, 2)}`);
+    } else setCard("card-best", `no feasible design (${data.evaluated} evaluated)`);
+    $("sizing-table").innerHTML = "<tr><th><i>b</i> (mm)</th><th><i>h</i> (mm)</th><th>mass (g)</th><th><i>N</i><sub>f</sub> (cycles)</th><th><i>n</i><sub>y</sub></th></tr>"
+      + data.top.map(c => `<tr><td>${c.width_mm.toFixed(2)}</td><td>${c.thickness_mm.toFixed(2)}</td>`
+        + `<td>${(c.mass_kg * 1000).toFixed(1)}</td><td>${fmtCycles(c.life)}</td><td>${fmt(c.ny, 2)}</td></tr>`).join("");
+  } catch (err) { showError(err); }
+}
+
+/* ---------- downloads ---------- */
+function download(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function flatten(obj, prefix, rows) {
+  for (const [k, v] of Object.entries(obj)) {
+    const name = prefix ? prefix + "." + k : k;
+    if (v && typeof v === "object" && !Array.isArray(v)) flatten(v, name, rows);
+    else rows.push([name, Array.isArray(v) ? v.join("; ") : v]);
+  }
+  return rows;
+}
+
+/* ---------- error + recalc ---------- */
+function showError(err) {
+  const badge = $("status-badge");
+  badge.textContent = "Invalid";
+  badge.className = "badge badge-invalid";
+  $("warnings").innerHTML = `<li class="err">INVALID: ${err.message}</li>`;
+}
+
+let timer = null;
+function scheduleRecalc() { clearTimeout(timer); timer = setTimeout(recalc, 250); }
+async function recalc() {
+  try {
+    renderAll(await api("/api/simulate", readInputs()));
+    runStudy(state.studyParam);
+    runSensitivity();
+  } catch (err) { showError(err); }
+}
+
+/* ---------- init ---------- */
+async function init() {
+  const defaults = await api("/api/defaults");
+  const materials = await api("/api/materials");
+  state.presets = materials.presets;
+  state.sweepable = defaults.sweepable;
+  $("material-notice").textContent = materials.notice;
+  $("material-preset").innerHTML = Object.entries(materials.presets)
+    .map(([k, m]) => `<option value="${k}">${m.name} (illustrative)</option>`).join("");
+  if (defaults.material && defaults.material.preset) $("material-preset").value = defaults.material.preset;
+  $("assumptions-list").innerHTML = defaults.assumptions.map(a => `<li>${a}</li>`).join("");
+  const g = defaults.geometry, l = defaults.loading, f = defaults.fatigue, o = defaults.optimization;
+  $("in-length").value = g.length_mm; $("in-width").value = g.width_mm; $("in-thickness").value = g.thickness_mm;
+  $("in-pa").value = l.alternating_load_n; $("in-pm").value = l.mean_load_n; $("in-frequency").value = l.frequency_hz;
+  $("in-kf").value = f.notch_factor; $("in-target-life").value = f.target_life_cycles;
+  $("in-min-ny").value = f.minimum_yield_safety_factor;
+  $("opt-wmin").value = o.width_min_mm; $("opt-wmax").value = o.width_max_mm;
+  $("opt-hmin").value = o.thickness_min_mm; $("opt-hmax").value = o.thickness_max_mm;
+  $("opt-grid").value = o.grid_points;
+
+  $("study-buttons").innerHTML = state.sweepable
+    .map(p => `<button type="button" data-p="${p}">${PARAM_HTML[p] || p}</button>`).join("");
+  document.querySelectorAll("#study-buttons button").forEach(b =>
+    b.addEventListener("click", () => runStudy(b.dataset.p)));
+  document.querySelectorAll("#inputs input, #custom-material-panel input, #custom-material-panel select, #material-preset")
+    .forEach(el => el.addEventListener("change", scheduleRecalc));
+  $("btn-custom-material").addEventListener("click", () => {
+    state.custom = !state.custom;
+    $("custom-material-panel").classList.toggle("hidden", !state.custom);
+    $("btn-custom-material").textContent = state.custom ? "Use preset material" : "Use custom material";
+    scheduleRecalc();
+  });
+  $("btn-sizing").addEventListener("click", runSizing);
+  $("btn-json").addEventListener("click", () => state.summary &&
+    download("fatiguelife_summary.json", JSON.stringify(state.summary, null, 2), "application/json"));
+  $("btn-csv").addEventListener("click", () => state.summary &&
+    download("fatiguelife_summary.csv", "key,value\n" + flatten(state.summary, "", [])
+      .map(r => `"${r[0]}","${String(r[1]).replaceAll('"', "'")}"`).join("\n"), "text/csv"));
+  $("btn-study-csv").addEventListener("click", () => state.sweep &&
+    download(`sweep_${state.sweep.parameter}.csv`, "value,life,ny,status\n"
+      + state.sweep.points.map(p => [p.value, p.life, p.ny, p.badge].join(",")).join("\n"), "text/csv"));
+  $("btn-sizing-csv").addEventListener("click", () => state.sizing &&
+    download("sizing.csv", "width_mm,thickness_mm,mass_kg,life,ny\n"
+      + state.sizing.top.map(c => [c.width_mm, c.thickness_mm, c.mass_kg, c.life, c.ny].join(",")).join("\n"), "text/csv"));
+  $("btn-copy-config").addEventListener("click", () =>
+    navigator.clipboard.writeText($("config-echo").textContent));
+  document.querySelectorAll("button[data-dl]").forEach(b => b.addEventListener("click", () => {
+    const svg = $(b.dataset.dl);
+    if (svg) download(b.dataset.dl + ".svg", svg.outerHTML, "image/svg+xml");
+  }));
+
+  recalc();
+}
+init();
+</script>
+</body>
+</html>

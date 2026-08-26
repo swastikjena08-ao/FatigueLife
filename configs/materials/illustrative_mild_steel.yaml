@@ -1,0 +1,22 @@
+# Illustrative dataset - educational comparison only.
+# Fatigue properties are condition-specific. Results depend on the selected
+# dataset and may not apply to a real component.
+
+name: "Illustrative Mild Steel"
+density_kg_m3: 7850
+youngs_modulus_gpa: 200
+yield_strength_mpa: 250
+ultimate_strength_mpa: 420
+basquin_coefficient_mpa: 900
+basquin_exponent: -0.11
+life_range_min_cycles: 10000
+life_range_max_cycles: 1e+08
+product_form: "illustrative"
+heat_treatment: "illustrative"
+surface_condition: "illustrative"
+environment: "illustrative"
+stress_ratio_r: -1
+source: "Illustrative textbook-style values for educational comparison only; not a measured dataset."
+confidence: "illustrative"
+condition_note: "Order-of-magnitude values loosely representative of a low-carbon structural steel in laboratory air; for comparative studies only."
+notes: ""

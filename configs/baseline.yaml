@@ -1,0 +1,25 @@
+project:
+  title: "Illustrative aluminium cantilever fatigue study"
+geometry:
+  length_mm: 100
+  width_mm: 20
+  thickness_mm: 5
+loading:
+  alternating_load_n: 30
+  mean_load_n: 20
+  frequency_hz: 10
+material:
+  preset: illustrative_aluminium
+fatigue:
+  notch_factor: 1.5
+  target_life_cycles: 1000000
+  minimum_yield_safety_factor: 1.5
+study:
+  sweep_points: 9
+  sweep_span_factor: 4
+optimization:
+  width_min_mm: 5
+  width_max_mm: 50
+  thickness_min_mm: 1
+  thickness_max_mm: 20
+  grid_points: 60

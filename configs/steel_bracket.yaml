@@ -1,0 +1,19 @@
+project:
+  title: "Mild steel bracket under combined mean and alternating load"
+geometry:
+  length_mm: 120
+  width_mm: 20
+  thickness_mm: 4
+loading:
+  alternating_load_n: 60
+  mean_load_n: 30
+  frequency_hz: 10
+material:
+  preset: illustrative_mild_steel
+fatigue:
+  notch_factor: 1.6
+  target_life_cycles: 2000000
+  minimum_yield_safety_factor: 1.5
+study:
+  sweep_points: 9
+  sweep_span_factor: 4
