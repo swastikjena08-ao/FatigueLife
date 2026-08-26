@@ -42,6 +42,8 @@ mass         = ρ·L·b·h
 
 ## Dashboard
 
+![FatigueLife dashboard](assets/dashboard-preview.png)
+
 The dashboard includes a header with status badge, model inputs with a beam diagram,
 material assistant (illustrative presets or a strict custom-material form),
 key-result cards · S–N curve · Goodman diagram · parameter studies · ranked
